@@ -16,18 +16,31 @@
 # limitations under the License.
 
 import os
+import sys
 
-os.environ["TF_CPP_MIN_LOG_LEVEL"] = "2"
+# NOTE
+# TF_CPP_MIN_LOG_LEVEL
+#   0 : INFO + WARNING + ERROR + FATAL
+#   1 : WARNING + ERROR + FATAL
+#   2 : ERROR + FATAL
+#   3 : FATAL
+#
+# TODO Find better way to suppress trackback on error
+# tracebacklimit
+#   The default is 1000.
+#   When set to 0 or less, all traceback information is suppressed
+if os.getenv('ONE_IMPORT_TF_VERBOSE') == '1':
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '0'
+    sys.tracebacklimit = 1000
+else:
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+    sys.tracebacklimit = 0
 
 import tensorflow as tf
 import argparse
-import sys
 
 from google.protobuf.message import DecodeError
 from google.protobuf import text_format as _text_format
-
-# TODO Find better way to suppress trackback on error
-sys.tracebacklimit = 0
 
 
 def wrap_frozen_graph(graph_def, inputs, outputs):
