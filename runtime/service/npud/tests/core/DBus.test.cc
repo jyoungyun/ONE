@@ -90,6 +90,7 @@ TEST_F(DBusTest, device_get_available_list)
   npud_core_call_device_get_available_list_sync(proxy, &out_error, NULL, &error);
   if (error)
   {
+    std::cout << error->message << std::endl;
     g_error_free(error);
   }
   ASSERT_EQ(out_error, 0);
