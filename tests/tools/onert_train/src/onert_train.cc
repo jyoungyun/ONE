@@ -17,7 +17,6 @@
 #include "allocation.h"
 #include "args.h"
 #include "benchmark.h"
-#include "dataview.h"
 #include "nnfw.h"
 #include "nnfw_util.h"
 #include "nnfw_internal.h"
@@ -34,8 +33,6 @@
 #include <stdexcept>
 #include <unordered_map>
 #include <vector>
-
-// static const char *default_backend_cand = "train";
 
 int main(const int argc, char **argv)
 {
@@ -108,9 +105,6 @@ int main(const int argc, char **argv)
     verifyInputTypes(num_inputs);
     verifyOutputTypes(num_expected);
 
-    // // Set training backend
-    // NNPR_ENSURE_STATUS(nnfw_set_available_backends(session, default_backend_cand));
-
     // prepare training info
     nnfw_train_info tri;
     tri.batch_size = args.getBatchSize();
@@ -161,8 +155,7 @@ int main(const int argc, char **argv)
       generator = rawDataLoader.loadDatas(args.getInputData(), args.getExpectedData(), input_infos,
                                           expected_infos);
     }
-    // else
-    //   generator = RandomGenerator(session).generate(input_infos, output_infos);
+    // TODO Support RamdonGenerator
 
     const int num_sample = args.getDataLength() / tri.batch_size;
     const int num_epoch = args.getEpoch();
@@ -199,7 +192,7 @@ int main(const int argc, char **argv)
       {
         float loss;
         NNPR_ENSURE_STATUS(nnfw_train_get_loss(session, i, &loss));
-        std::cout << "[Epoch " << epoch
+        std::cout << "[Epoch " << epoch << "] Output [" << i
                   << "] Loss: " << loss /* << ", Accuracy: " << accuracy*/ << std::endl;
       }
     }
