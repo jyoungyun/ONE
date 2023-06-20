@@ -14,27 +14,30 @@
  * limitations under the License.
  */
 
-#ifndef __ONERT_TRAIN_RAWFORMATTER_H__
-#define __ONERT_TRAIN_RAWFORMATTER_H__
+#ifndef __ONERT_TRAIN_RAWDATALOADER_H__
+#define __ONERT_TRAIN_RAWDATALOADER_H__
 
 #include "allocation.h"
-#include "formatter.h"
-#include "types.h"
+#include "nnfw.h"
 
 #include <string>
-#include <vector>
-
-struct nnfw_session;
+#include <fstream>
 
 namespace onert_train
 {
-class RawFormatter : public Formatter
+class RawDataLoader
 {
 public:
-  RawFormatter(nnfw_session *sess) : Formatter(sess) {}
-  void loadInputs(const std::string &filename, std::vector<Allocation> &inputs) override;
-  void dumpOutputs(const std::string &filename, std::vector<Allocation> &outputs) override;
+  RawDataLoader(nnfw_session *sess) : _session(sess) {}
+  Generator loadDatas(const std::string &input_file, const std::string &expected_file,
+                      std::vector<nnfw_tensorinfo> &input_infos,
+                      std::vector<nnfw_tensorinfo> &output_infos);
+
+private:
+  nnfw_session *_session;
+  std::ifstream _input_file;
+  std::ifstream _expected_file;
 };
 } // namespace onert_train
 
-#endif // __ONERT_TRAIN_RAWFORMATTER_H__
+#endif // __ONERT_TRAIN_RAWDATALOADER_H__

@@ -14,28 +14,41 @@
  * limitations under the License.
  */
 
-#ifndef __ONERT_TRAIN_RANDOMGEN_H__
-#define __ONERT_TRAIN_RANDOMGEN_H__
+#ifndef __ONERT_TRAIN_DATAVIEW_H__
+#define __ONERT_TRAIN_DATAVIEW_H__
 
-#include <string>
-#include <vector>
-
-#include "nnfw.h"
 #include "allocation.h"
 
-struct nnfw_session;
+#include <memory>
+#include <vector>
 
 namespace onert_train
 {
-// class RandomGenerator
-// {
-// public:
-//   RandomGenerator(nnfw_session *sess) : session_(sess) {}
-//   void generate(std::vector<Allocation> &inputs, int num_inputs, int data_length);
 
-// private:
-//   nnfw_session *session_;
-// };
+typedef std::vector<Allocation>::iterator vec_iter;
+
+class DataView
+{
+public:
+  DataView(std::vector<Allocation> &data) : _data(std::move(data)), _it(_data.begin()) {}
+
+  void setBatchSize(uint32_t batch_size) { _batch_size = batch_size; }
+
+  // TODO Do not copy vector data
+  std::vector<Allocation> fetch()
+  {
+    const auto _prev = _it;
+    _it += _batch_size;
+    return std::move(std::vector<Allocation>(_prev, _it));
+  }
+
+  void reset() { _it = _data.begin(); }
+
+private:
+  uint32_t _batch_size;
+  std::vector<Allocation> _data;
+  vec_iter _it;
+};
 } // namespace onert_train
 
-#endif // __ONERT_TRAIN_RANDOMGEN_H__
+#endif // __ONERT_TRAIN_DATAVIEW_H__
