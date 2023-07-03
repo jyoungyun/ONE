@@ -18,6 +18,7 @@
 
 #include "ops/ConvolutionLayer.h"
 #include "ops/PoolLayer.h"
+#include "ops/ReshapeLayer.h"
 
 #include <backend/Backend.h>
 #include <backend/IConfig.h>
@@ -160,6 +161,30 @@ void InferenceKernelGenerator::visit(const ir::operation::Pool2D &node)
   fn->configure(ifm_tensor, padding.left, padding.right, padding.top, padding.bottom,
                 stride.horizontal, stride.vertical, kw, kh, activation, ofm_tensor,
                 convertPoolType(node.param().op_type));
+
+  _return_fn = std::move(fn);
+}
+
+void InferenceKernelGenerator::visit(const ir::operation::Reshape &node)
+{
+  const auto output_index{node.getOutputs().at(0)};
+  const auto input_index{node.getInputs().at(ir::operation::Reshape::Input::INPUT)};
+
+  auto output_tensor = _tensor_reg->getPortableTensor(output_index);
+  auto input_tensor = _tensor_reg->getPortableTensor(input_index);
+
+  // optional 2nd input
+  IPortableTensor *shape_tensor = nullptr;
+
+  if (node.getInputs().size() == 2)
+  {
+    const auto shape_index{node.getInputs().at(ir::operation::Reshape::Input::SHAPE)};
+    shape_tensor = _tensor_reg->getPortableTensor(shape_index);
+  }
+
+  auto fn = std::make_unique<ops::ReshapeLayer>();
+
+  fn->configure(input_tensor, shape_tensor, output_tensor);
 
   _return_fn = std::move(fn);
 }
