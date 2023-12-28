@@ -242,14 +242,6 @@ int main(const int argc, char **argv)
       exit(-1);
     }
 
-    if (vdata_length < tri.batch_size)
-    {
-      std::cerr << "E: validation data is not enough for validation."
-                   "Reduce batch_size or adjust validation_split value"
-                << std::endl;
-      exit(-1);
-    }
-
     std::vector<float> losses(num_expecteds);
     measure.run(PhaseType::EXECUTE, [&]() {
       const int num_step = tdata_length / tri.batch_size;
