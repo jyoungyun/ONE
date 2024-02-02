@@ -1,0 +1,62 @@
+{
+  // See https://go.microsoft.com/fwlink/?LinkId=733558
+  // for the documentation about the tasks.json format
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "ONE-Compiler: Build ONE Compiler",
+      "type": "shell",
+      "command": "DESTDIR=$(pwd)/overlay ./nncc build -- install"
+    },
+    {
+      "label": "ONE-Compiler: Configure ONE Compiler",
+      "type": "shell",
+      "command": "./nncc configure"
+    },
+    {
+      "label": "ONE-Runtime: Host X86 Docker Build (Debug)",
+      "type": "shell",
+      "command": "./nnas docker-run make -f Makefile.template"
+    },
+    {
+      "label": "ONE-Runtime: Host X86 Docker Build (Release)",
+      "type": "shell",
+      "command": "./nnas docker-run make -f Makefile.template BUILD_TYPE=release"
+    },
+    {
+      "label": "ONE-Runtime: Host X86(w/TRIX) Docker Build (Debug)",
+      "type": "shell",
+      "command": "DOCKER_IMAGE_NAME=nnfw/one-devtools:focal-trix-engine ./nnas docker-run make -f Makefile.template OPTIONS='-DTRIX_ENGINE_PREFIX=/opt/trinity'"
+    },
+    {
+      "label": "ONE-Runtime: Host X86(w/TRIX) Docker Build (Release)",
+      "type": "shell",
+      "command": "DOCKER_IMAGE_NAME=nnfw/one-devtools:focal-trix-engine ./nnas docker-run make -f Makefile.template BUILD_TYPE=release OPTIONS='-DTRIX_ENGINE_PREFIX=/opt/trinity'"
+    },
+    {
+      "label": "ONE-Runtime: ARM Cross Build (Debug)",
+      "type": "shell",
+      "command": "ROOTFS_DIR=$(pwd)/tools/cross/rootfs/arm/ CROSS_BUILD=1 TARGET_ARCH=armv7l make -f Makefile.template"
+    },
+    {
+      "label": "ONE-Runtime: ARM Cross Build (Release)",
+      "type": "shell",
+      "command": "ROOTFS_DIR=$(pwd)/tools/cross/rootfs/arm/ CROSS_BUILD=1 TARGET_ARCH=armv7l make -f Makefile.template BUILD_TYPE=release"
+    },
+    {
+      "label": "ONE-Runtime: ARM64 Cross Build (Debug)",
+      "type": "shell",
+      "command": "ROOTFS_DIR=$(pwd)/tools/cross/rootfs/aarch64/ CROSS_BUILD=1 TARGET_ARCH=aarch64 make -f Makefile.template"
+    },
+    {
+      "label": "ONE-Runtime: ARM64 Cross Build (Release)",
+      "type": "shell",
+      "command": "ROOTFS_DIR=$(pwd)/tools/cross/rootfs/aarch64/ CROSS_BUILD=1 TARGET_ARCH=aarch64 make -f Makefile.template BUILD_TYPE=release"
+    },
+    {
+      "label": "ONE-Runtime: Tizen Docker Build (Debug)",
+      "type": "shell",
+      "command": "docker run -it --rm -v ${PWD}:/opt/test -w /opt/test --privileged nnfw/one-devtools:focal gbs -c /opt/test/infra/nnfw/config/gbs.conf build -A armv7l --profile=profile.tizen_8 --define 'test_build 1' --define 'nproc 4'"
+    }
+  ]
+}
