@@ -19,6 +19,7 @@
 #include "util/Set.h"
 
 #include <algorithm>
+#include <map>
 #include <misc/polymorphic_downcast.h>
 
 namespace onert
@@ -110,7 +111,7 @@ void TrainableGraph::verify(void) const
     }
     catch (const std::bad_cast &)
     {
-      std::runtime_error("TrainableGraph: " + op.name() + " is not a trainable operation");
+      throw std::runtime_error("TrainableGraph: " + op.name() + " is not a trainable operation");
     }
   });
 }
@@ -125,9 +126,68 @@ const ITrainableOperation &TrainableGraph::operation(OperationIndex index) const
   return dynamic_cast<const ITrainableOperation &>(_graph.operations().at(index));
 }
 
+void TrainableGraph::validateTopologicalOrder(std::vector<ir::OperationIndex> order,
+                                              bool is_forward) const
+{
+  if (!is_forward)
+    std::reverse(order.begin(), order.end());
+
+  const std::string order_type = is_forward ? "forward" : "backward";
+
+  std::map<ir::OperationIndex, uint32_t> position;
+  for (uint32_t p = 0; p < order.size(); ++p)
+  {
+    auto index = order[p];
+    // TODO: replace this with `std::map::contains` after C++20
+    if (position.find(index) != position.end())
+      throw std::runtime_error{"Invalid " + order_type + " topological order: duplicate node @" +
+                               std::to_string(index.value())};
+
+    position[index] = p;
+  }
+
+  operations().iterate([&](const ir::OperationIndex &index, const ir::IOperation &op) {
+    if (position.count(index) == 0)
+      return;
+
+    uint32_t p = position[index];
+
+    for (const auto &output : op.getOutputs() | ir::Remove::DUPLICATED | ir::Remove::UNDEFINED)
+    {
+      const auto &operand = operands().at(output);
+      for (const auto &use : operand.getUses())
+      {
+        if (position.count(use) == 0)
+          continue;
+
+        uint32_t q = position[use];
+        if (p > q)
+          throw std::runtime_error{
+            "Invalid " + order_type + " topological order: inversion between @" +
+            std::to_string(index.value()) + " and @" + std::to_string(use.value())};
+      }
+    }
+  });
+}
+
+void TrainableGraph::validateForwardTopologicalOrder(
+  const std::vector<ir::OperationIndex> &order) const
+{
+  validateTopologicalOrder(order, true);
+}
+
+void TrainableGraph::validateBackwardTopologicalOrder(
+  const std::vector<ir::OperationIndex> &order) const
+{
+  validateTopologicalOrder(order, false);
+}
+
 std::vector<ir::OperationIndex> TrainableGraph::topolSortOperations() const
 {
-  return _graph.topolSortOperations();
+  auto ret = _graph.topolSortOperations();
+  validateForwardTopologicalOrder(ret);
+
+  return ret;
 }
 
 std::vector<ir::OperationIndex> TrainableGraph::btopolSortOperations() const
@@ -149,19 +209,22 @@ std::vector<ir::OperationIndex> TrainableGraph::btopolSortOperations() const
     if (!unvisited.contains(index))
       return;
     unvisited.remove(index);
-    ret.push_back(index);
 
     for (const auto &input : op.getInputs() | ir::Remove::DUPLICATED | ir::Remove::UNDEFINED)
     {
       const auto &operand = operands().at(input);
       const auto &def = operand.getDef();
       if (!def.valid())
-        return;
+        continue;
       dfs(def, operations().at(def));
     }
+
+    ret.push_back(index);
   };
 
   dfs(loss_idx, operations().at(loss_idx));
+  std::reverse(ret.begin(), ret.end());
+  validateBackwardTopologicalOrder(ret);
 
   return ret;
 }

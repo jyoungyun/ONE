@@ -16,6 +16,7 @@
 
 #include "KernelGenerator.h"
 
+#include "ops/BinaryArithmeticLayer.h"
 #include "ops/ConvolutionLayer.h"
 #include "ops/DepthwiseConvolutionLayer.h"
 #include "ops/ElementwiseActivationLayer.h"
@@ -24,6 +25,7 @@
 #include "ops/LossCategoricalCrossentropyLayer.h"
 #include "ops/MeanLayer.h"
 #include "ops/GradientApplier.h"
+#include "ops/PadLayer.h"
 #include "ops/PoolLayer.h"
 #include "ops/ReshapeLayer.h"
 #include "ops/SoftMaxLayer.h"
@@ -120,6 +122,32 @@ KernelGenerator::KernelGenerator(const ir::train::TrainableGraph &tgraph,
   // DO NOTHING
 }
 
+void KernelGenerator::visit(const ir::train::operation::BinaryArithmetic &node)
+{
+  using ir::train::operation::BinaryArithmetic;
+
+  const auto output_index{node.getOutputs().at(0)};
+  const auto lhs_index{node.getInputs().at(BinaryArithmetic::Input::LHS)};
+  const auto rhs_index{node.getInputs().at(BinaryArithmetic::Input::RHS)};
+
+  const auto arithmetic_type = node.param().arithmetic_type;
+  const auto activation = node.param().activation;
+
+  auto output_tensor = _tensor_reg->getPortableTensor(output_index);
+  auto lhs_tensor = _tensor_reg->getPortableTensor(lhs_index);
+  auto rhs_tensor = _tensor_reg->getPortableTensor(rhs_index);
+
+  auto back_prop_output_tensor = _tensor_reg->getBackPropTensor(output_index);
+  auto back_prop_lhs_tensor = _tensor_reg->getBackPropTensor(lhs_index);
+  auto back_prop_rhs_tensor = _tensor_reg->getBackPropTensor(rhs_index);
+
+  auto fn = std::make_unique<ops::BinaryArithmeticLayer>();
+  fn->configure(lhs_tensor, rhs_tensor, output_tensor, back_prop_lhs_tensor, back_prop_rhs_tensor,
+                back_prop_output_tensor, activation,
+                static_cast<train::ops::ArithmeticType>(arithmetic_type));
+  _return_fn = std::move(fn);
+}
+
 void KernelGenerator::visit(const ir::train::operation::Conv2D &node)
 {
   using ir::train::operation::Conv2D;
@@ -142,7 +170,7 @@ void KernelGenerator::visit(const ir::train::operation::Conv2D &node)
   // Generate kernel
   const auto stride = node.param().stride;
   const auto activation = node.param().activation;
-  const auto param_padding = node.param().padding;
+  const auto &param_padding = node.param().padding;
   const auto dilation = node.param().dilation;
   auto fn = std::make_unique<ops::ConvolutionLayer>();
 
@@ -320,6 +348,32 @@ void KernelGenerator::visit(const ir::train::operation::Loss &node)
   }
 }
 
+void KernelGenerator::visit(const ir::train::operation::Pad &node)
+{
+  const auto input_index{node.getInputs().at(ir::operation::Pad::Input::INPUT)};
+  const auto pad_index{node.getInputs().at(ir::operation::Pad::Input::PAD)};
+  const auto output_index{node.getOutputs().at(0)};
+
+  auto input = _tensor_reg->getPortableTensor(input_index);
+  auto pad = _tensor_reg->getPortableTensor(pad_index);
+  auto output = _tensor_reg->getPortableTensor(output_index);
+
+  auto fn = std::make_unique<ops::PadLayer>();
+
+  IPortableTensor *value = nullptr;
+  if (node.getInputs().size() == 3) // isPadV2
+  {
+    const auto value_index{node.getInputs().at(ir::operation::Pad::Input::VALUE)};
+    value = _tensor_reg->getPortableTensor(value_index);
+  }
+
+  auto out_back_prop_tensor = _tensor_reg->getBackPropTensor(output_index);
+  auto in_back_prop_tensor = _tensor_reg->getBackPropTensor(input_index);
+
+  fn->configure(input, pad, value, output, in_back_prop_tensor, out_back_prop_tensor);
+  _return_fn = std::move(fn);
+}
+
 void KernelGenerator::visit(const ir::train::operation::Pool2D &node)
 {
   using ir::train::operation::Pool2D;
@@ -327,9 +381,9 @@ void KernelGenerator::visit(const ir::train::operation::Pool2D &node)
   const auto output_index{node.getOutputs().at(0)};
   const auto input_index{node.getInputs().at(0)};
 
-  const auto operands = _tgraph.operands();
-  const auto ofm_shape = operands.at(output_index).shape();
-  const auto ifm_shape = operands.at(input_index).shape();
+  const auto &operands = _tgraph.operands();
+  const auto &ofm_shape = operands.at(output_index).shape();
+  const auto &ifm_shape = operands.at(input_index).shape();
 
   if (ifm_shape.rank() != 4)
   {
