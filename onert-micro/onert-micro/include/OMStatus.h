@@ -24,6 +24,7 @@ enum OMStatus
 {
   Ok,
   UnsupportedType,
+  UnsupportedQuantizationType,
   UnsupportedActivation,
   UnsupportedOp,
   UnknownError,

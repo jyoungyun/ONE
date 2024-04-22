@@ -28,9 +28,11 @@
 #include "luci/Pass/FoldGatherPass.h"
 #include "luci/Pass/FoldShapePass.h"
 #include "luci/Pass/FoldSparseToDensePass.h"
+#include "luci/Pass/FoldSqueezePass.h"
 #include "luci/Pass/ForwardReshapeToUnaryOpPass.h"
 #include "luci/Pass/ForwardTransposeOpPass.h"
 #include "luci/Pass/FuseActivationFunctionPass.h"
+#include "luci/Pass/FuseAddWithConvPass.h"
 #include "luci/Pass/FuseAddWithFullyConnectedPass.h"
 #include "luci/Pass/FuseAddWithTConvPass.h"
 #include "luci/Pass/FuseBatchNormWithConvPass.h"
@@ -311,6 +313,10 @@ void CircleOptimizer::optimize(loco::Graph *g) const
   {
     phase.emplace_back(std::make_unique<FuseSliceWithTConvPass>());
   }
+  if (_options->query(Options::Algorithm::FuseAddWithConv))
+  {
+    phase.emplace_back(std::make_unique<FuseAddWithConvPass>());
+  }
   if (_options->query(Options::Algorithm::FuseAddWithFullyConnected))
   {
     phase.emplace_back(std::make_unique<FuseAddWithFullyConnectedPass>());
@@ -374,6 +380,10 @@ void CircleOptimizer::optimize(loco::Graph *g) const
   if (_options->query(Options::Algorithm::FoldSparseToDense))
   {
     phase.emplace_back(std::make_unique<luci::FoldSparseToDensePass>());
+  }
+  if (_options->query(Options::Algorithm::FoldSqueeze))
+  {
+    phase.emplace_back(std::make_unique<luci::FoldSqueezePass>());
   }
   if (_options->query(Options::Algorithm::FusePreActivationBatchNorm))
   {

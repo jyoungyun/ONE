@@ -253,28 +253,42 @@ StaticShapeInferer::createStaticShapeInferers(
         {
           // TODO Remove dynamic_cast
           // An virtual base class cannot be downcasted by static_cast
-          const auto &if_op = dynamic_cast<const ir::operation::If &>(op);
+          try
+          {
+            const auto &if_op = dynamic_cast<const ir::operation::If &>(op);
 
-          appendChildInferer(if_op.param().then_subg_index);
-          appendChildInferer(if_op.param().else_subg_index);
+            appendChildInferer(if_op.param().then_subg_index);
+            appendChildInferer(if_op.param().else_subg_index);
 
-          appendSubgraphInputObserver(if_op.param().then_subg_index);
-          appendSubgraphInputObserver(if_op.param().else_subg_index);
+            appendSubgraphInputObserver(if_op.param().then_subg_index);
+            appendSubgraphInputObserver(if_op.param().else_subg_index);
 
-          setControlFlowOutputObserver(if_op.param().then_subg_index);
+            setControlFlowOutputObserver(if_op.param().then_subg_index);
+          }
+          catch (const std::bad_cast &)
+          {
+            throw std::runtime_error("StaticShapeInferer: Invalid If operation");
+          }
         }
         else if (op.opcode() == ir::OpCode::While)
         {
           // TODO Remove dynamic_cast
-          const auto &while_op = dynamic_cast<const ir::operation::While &>(op);
+          try
+          {
+            const auto &while_op = dynamic_cast<const ir::operation::While &>(op);
 
-          appendChildInferer(while_op.param().cond_subg_index);
-          appendChildInferer(while_op.param().body_subg_index);
+            appendChildInferer(while_op.param().cond_subg_index);
+            appendChildInferer(while_op.param().body_subg_index);
 
-          appendSubgraphInputObserver(while_op.param().cond_subg_index);
-          appendSubgraphInputObserver(while_op.param().body_subg_index);
+            appendSubgraphInputObserver(while_op.param().cond_subg_index);
+            appendSubgraphInputObserver(while_op.param().body_subg_index);
 
-          setControlFlowOutputObserver(while_op.param().body_subg_index);
+            setControlFlowOutputObserver(while_op.param().body_subg_index);
+          }
+          catch (const std::bad_cast &)
+          {
+            throw std::runtime_error("StaticShapeInferer: Invalid While operation");
+          }
         }
       });
   }
@@ -831,7 +845,7 @@ void StaticShapeInferer::visit(const ir::operation::Permute &op)
   // However, it is not applied here, so input/output have the same layout of frontend. Because
   // "ExecutorFactory" would convert shape of input/output accoding to the layouts when registering
   // operand info to "TensorBuilder" after calling "StaticShapeInferer"
-  const auto new_shape = input.info().shape();
+  const auto &new_shape = input.info().shape();
   output.info().shape(new_shape);
 }
 
@@ -964,8 +978,8 @@ void StaticShapeInferer::visit(const ir::operation::Reshape &op)
       const auto *shape_buf = reinterpret_cast<const int32_t *>(shape.data()->base());
       assert(shape_buf);
 
-      ir::Shape new_shape = shape_inference::inferReshapeShape(
-        shape_buf, shape.shape().num_elements(), input.shape().num_elements());
+      ir::Shape new_shape =
+        shape_inference::inferReshapeShape(input.shape(), shape_buf, shape.shape().num_elements());
 
       // if shape is from Const, TFLC put the shape of output into tensor
       if (new_shape != output.shape())
@@ -986,7 +1000,7 @@ void StaticShapeInferer::visit(const ir::operation::Reshape &op)
     // Let's check the new_shape option
     auto shape = op.param().new_shape;
     ir::Shape new_shape =
-      shape_inference::inferReshapeShape(shape.data(), shape.size(), input.shape().num_elements());
+      shape_inference::inferReshapeShape(input.shape(), shape.data(), shape.size());
 
     if (new_shape != output.shape())
     {

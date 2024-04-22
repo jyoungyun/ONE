@@ -19,8 +19,8 @@ set_target_properties(onert_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_include_directories(onert_core PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 
 # Flatbuffer for loader
-nnfw_find_package(FlatBuffers EXACT 2.0 REQUIRED)
-target_link_libraries(onert_core PRIVATE flatbuffers::flatbuffers)
+nnfw_find_package(FlatBuffers EXACT 23.5.26 REQUIRED)
+target_link_libraries(onert_core PRIVATE flatbuffers::flatbuffers-23.5.26)
 target_link_libraries(onert_core PRIVATE circle_schema)
 
 target_link_libraries(onert_core PRIVATE jsoncpp half)
@@ -62,6 +62,8 @@ install(DIRECTORY "${CMAKE_CURRENT_SOURCE_DIR}/include/"
         DESTINATION "include/onert"
         FILES_MATCHING PATTERN "*.h" PATTERN "*.lst"
         )
+# Set install rpath to find plugins - odc, codegen, etc
+set_target_properties(onert_core PROPERTIES INSTALL_RPATH "$ORIGIN/nnfw/odc/:$ORIGIN/nnfw/codegen/:$ORIGIN/")
 
 if(NOT ENABLE_TEST)
   return()

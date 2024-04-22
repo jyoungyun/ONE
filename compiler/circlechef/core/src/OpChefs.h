@@ -20,6 +20,8 @@
 #include "Op/BatchMatMul.h"
 #include "Op/BCQFullyConnected.h"
 #include "Op/BCQGather.h"
+#include "Op/FullyConnected.h"
+#include "Op/GRU.h"
 #include "Op/InstanceNorm.h"
 
 #endif // __OP_CHEFS_H__

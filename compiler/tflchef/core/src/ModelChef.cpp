@@ -94,6 +94,7 @@ DataChefRegistry &data_chef_registry(const tflchef::TensorType &type)
   static DataChefRegistry s16;
   static DataChefRegistry fp16;
   static DataChefRegistry s8;
+  static DataChefRegistry s4;
 
   switch (type)
   {
@@ -115,6 +116,8 @@ DataChefRegistry &data_chef_registry(const tflchef::TensorType &type)
       return s16;
     case tflchef::INT8:
       return s8;
+    case tflchef::INT4:
+      return s4;
     default:
       break;
   }
@@ -350,6 +353,7 @@ template <typename T> std::map<std::string, int32_t> cook_graph(const T &graph, 
       {
         assert(not operand.has_sparsity());
         assert(operand.has_shape());
+        assert(operand.type() != tflchef::TensorType::INT4);
 
         const int32_t dims_count = dims.size();
         std::vector<int> traversal_order_vec;
@@ -453,6 +457,21 @@ template <typename T> std::map<std::string, int32_t> cook_graph(const T &graph, 
       }
       else
       {
+        // pack for INT4 and replace data_vec
+        if (operand.type() == tflchef::TensorType::INT4)
+        {
+          uint32_t packed = (count + 1) / 2;
+          std::vector<uint8_t> data_packed(packed);
+          for (uint32_t idx = 0; idx < packed; ++idx)
+          {
+            uint32_t sidx = idx * 2;
+            data_packed[idx] = data_vec[sidx++] & 0x0f;
+            if (sidx < count)
+              data_packed[idx] |= data_vec[sidx] << 4;
+          }
+          data_vec = data_packed;
+        }
+
         auto data = flatbuffer_builder->CreateVector(data_vec);
 
         // Create Buffer

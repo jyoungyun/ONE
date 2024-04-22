@@ -30,6 +30,8 @@ std::string to_str(loco::DataType type)
 {
   switch (type)
   {
+    case loco::DataType::U4:
+      return "UINT4";
     case loco::DataType::U8:
       return "UINT8";
     case loco::DataType::U16:
@@ -39,6 +41,8 @@ std::string to_str(loco::DataType type)
     case loco::DataType::U64:
       return "UINT64";
 
+    case loco::DataType::S4:
+      return "INT4";
     case loco::DataType::S8:
       return "INT8";
     case loco::DataType::S16:
@@ -341,6 +345,20 @@ void CircleBidirectionalSequenceLSTMSummaryBuilder::build_attributes(const luci:
   s.args().append("merge_outputs", to_str(lstm->merge_outputs()));
   s.args().append("time_major", to_str(lstm->time_major()));
   s.args().append("asymmetric_quantize_inputs", to_str(lstm->asymmetric_quantize_inputs()));
+}
+
+std::vector<std::string> CircleGRUSummaryBuilder::get_input_names(const luci::CircleNode *)
+{
+  return {"input",        "hidden_hidden",     "hidden_hidden_bias",
+          "hidden_input", "hidden_input_bias", "state"};
+}
+
+void CircleGRUSummaryBuilder::build_attributes(const luci::CircleNode *node, locop::NodeSummary &s)
+{
+  auto gru = loco::must_cast<const luci::CircleGRU *>(node);
+  s.args().append("fused_act_function", to_str(gru->fusedActivationFunction()));
+  s.args().append("return_sequence", to_str(gru->returnSequences()));
+  s.args().append("time_major", to_str(gru->timeMajor()));
 }
 
 std::vector<std::string> CircleBroadcastToSummaryBuilder::get_input_names(const luci::CircleNode *)

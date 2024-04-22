@@ -34,6 +34,7 @@ public:
   {
     enum Algorithm
     {
+      FuseAddWithConv,
       FuseAddWithFullyConnected,
       FuseAddWithTConv,
       FuseBatchNormWithConv,
@@ -62,6 +63,7 @@ public:
       FoldGather,
       FoldShape,
       FoldSparseToDense,
+      FoldSqueeze,
       ForwardReshapeToUnaryOp,
       ForwardTransposeOp,
       SparsifyTensorPass,

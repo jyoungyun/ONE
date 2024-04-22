@@ -1744,6 +1744,28 @@ loco::NodeShape infer_bcq_gather(const luci::CircleBCQGather *node)
   return loco::NodeShape{output_shape};
 }
 
+loco::NodeShape infer_circle_gru(const luci::CircleGRU *node)
+{
+  loco::TensorShape output_shape;
+
+  const auto input_shape = luci::shape_get(node->input()).as<loco::TensorShape>();
+  const auto state_shape = luci::shape_get(node->state()).as<loco::TensorShape>();
+
+  auto rank = input_shape.rank();
+  assert(rank > 1);
+  output_shape.rank(rank);
+  for (uint32_t i = 0; i < rank - 1; i++)
+  {
+    output_shape.dim(i) = input_shape.dim(i);
+  }
+  output_shape.dim(rank - 1) = state_shape.dim(1);
+
+  if (not node->returnSequences())
+    output_shape.dim(0) = 1;
+
+  return loco::NodeShape{output_shape};
+}
+
 // Virtual
 loco::NodeShape infer_input(const luci::CircleInput *node)
 {
@@ -2000,7 +2022,7 @@ loco::NodeShape infer_while_out(const luci::CircleWhileOut *node)
   auto cond_graph_inputs = cond_graph->inputs();
   auto cond_graph_input = cond_graph_inputs->at(cond_in->index());
 
-  auto cond_graph_input_shape = *cond_graph_input->shape();
+  const auto &cond_graph_input_shape = *cond_graph_input->shape();
   auto this_shape = own_shape(node);
 
   if (!(this_shape == cond_graph_input_shape))
@@ -2479,6 +2501,8 @@ public:
 
     return loco::NodeShape{input_shape};
   }
+
+  loco::NodeShape visit(const luci::CircleGRU *node) final { return infer_circle_gru(node); }
 
   // Virtual
   loco::NodeShape visit(const luci::CircleInput *node) final { return infer_input(node); }

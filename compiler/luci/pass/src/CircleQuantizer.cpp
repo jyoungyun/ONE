@@ -27,6 +27,7 @@
 #include "luci/Pass/QuantizeWithMinMaxPass.h"
 #include "luci/Pass/QuantizeDequantizeWeightsPass.h"
 #include "luci/Pass/QuantizeWeightsPass.h"
+#include "luci/Pass/QuantizeOnnxFakeQuantModelPass.h"
 
 #include "luci/Pass/CircleShapeInferencePass.h"
 #include "luci/Pass/CircleTypeInferencePass.h"
@@ -428,7 +429,7 @@ void CircleQuantizer::quantize(loco::Graph *g) const
     // Check dtype/granularity of layer params
     for (auto layer_param : layer_params)
     {
-      auto name = layer_param->name;
+      const auto &name = layer_param->name;
       if (!in_array(to_lower_case(layer_param->dtype), fakeq_supported_output_model_dtype))
       {
         throw std::runtime_error("Unsupported dtype in " + name + ". List of supported dtype: " +
@@ -546,7 +547,7 @@ void CircleQuantizer::quantize(loco::Graph *g) const
     // Check dtype/granularity of layer params
     for (auto layer_param : layer_params)
     {
-      auto name = layer_param->name;
+      const auto &name = layer_param->name;
       if (!in_array(to_lower_case(layer_param->dtype), qwmm_supported_output_model_dtype))
       {
         throw std::runtime_error("Unsupported dtype in " + name + ". List of supported dtype: " +
@@ -626,7 +627,7 @@ void CircleQuantizer::quantize(loco::Graph *g) const
   if (_options->query(Options::Algorithm::QuantizeWeights))
   {
     static const std::vector<std::string> qw_supported_input_model_dtype{"float32"};
-    static const std::vector<std::string> qw_supported_output_model_dtype{"int8", "int16"};
+    static const std::vector<std::string> qw_supported_output_model_dtype{"int4", "int8", "int16"};
     static const std::vector<std::string> qw_supported_granularity{"channel"};
 
     auto input_model_dtype =
@@ -655,6 +656,30 @@ void CircleQuantizer::quantize(loco::Graph *g) const
     luci::QuantizeWeightsPass weights_quantizer(std::move(ctx));
 
     weights_quantizer.run(g);
+  }
+
+  if (_options->query(Options::Algorithm::QuantizeOnnxFakeQuantizedModel))
+  {
+    auto ctx = std::make_unique<luci::QuantizeOnnxFakeQuantModelPass::Context>();
+    {
+      ctx->default_activation_dtype = loco::DataType::S16;
+    }
+
+    luci::QuantizeOnnxFakeQuantModelPass quantizer(std::move(ctx));
+
+    quantizer.run(g);
+
+    logo::Phase phase;
+
+    // Default passes
+    phase.emplace_back(std::make_unique<logo::RemoveDeadNodeWithQueryPass>());
+    phase.emplace_back(std::make_unique<luci::CircleShapeInferencePass>());
+    phase.emplace_back(std::make_unique<luci::CircleTypeInferencePass>());
+
+    ProgressReporter prog(g, logo::PhaseStrategy::Restart);
+    logo::PhaseRunner<logo::PhaseStrategy::Restart> phase_runner{g};
+    phase_runner.attach(&prog);
+    phase_runner.run(phase);
   }
 
   // Requantize
