@@ -729,7 +729,7 @@ NNFW_STATUS nnfw_session::set_output_layout(uint32_t index, NNFW_LAYOUT layout)
   return NNFW_STATUS_NO_ERROR;
 }
 
-NNFW_STATUS nnfw_session::apply_tensorinfo(uint32_t index, nnfw_tensorinfo ti)
+NNFW_STATUS nnfw_session::set_input_tensorinfo(uint32_t index, const nnfw_tensorinfo *ti)
 {
   // sanity check
   {
@@ -740,25 +740,32 @@ NNFW_STATUS nnfw_session::apply_tensorinfo(uint32_t index, nnfw_tensorinfo ti)
       return NNFW_STATUS_INVALID_STATE;
     }
 
-    if (ti.rank <= 0 || ti.rank > NNFW_MAX_RANK)
+    if (ti == nullptr)
     {
-      std::cerr << "unsupported rank: " << ti.rank << std::endl;
+      std::cerr << "Error during nnfw_session::set_input_tensorinfo : tensorinfo is null"
+                << std::endl;
+      return NNFW_STATUS_UNEXPECTED_NULL;
+    }
+
+    if (ti->rank <= 0 || ti->rank > NNFW_MAX_RANK)
+    {
+      std::cerr << "unsupported rank: " << ti->rank << std::endl;
       return NNFW_STATUS_ERROR;
     }
 
-    for (int32_t i = 0; i < ti.rank; ++i)
+    for (int32_t i = 0; i < ti->rank; ++i)
     {
-      if (ti.dims[i] <= 0)
+      if (ti->dims[i] <= 0)
       {
-        std::cerr << "dim must be positive integer but was " << ti.dims[i] << std::endl;
+        std::cerr << "dim must be positive integer but was " << ti->dims[i] << std::endl;
         return NNFW_STATUS_ERROR;
       }
     }
   }
 
-  onert::ir::Shape new_shape(ti.rank);
-  for (int32_t i = 0; i < ti.rank; i++)
-    new_shape.dim(i) = ti.dims[i];
+  onert::ir::Shape new_shape(ti->rank);
+  for (int32_t i = 0; i < ti->rank; i++)
+    new_shape.dim(i) = ti->dims[i];
 
   if (!isStatePreparedOrFinishedRun())
   {
@@ -770,12 +777,6 @@ NNFW_STATUS nnfw_session::apply_tensorinfo(uint32_t index, nnfw_tensorinfo ti)
     _execution->changeInputShape(onert::ir::IOIndex(index), new_shape);
 
   return NNFW_STATUS_NO_ERROR;
-}
-
-NNFW_STATUS nnfw_session::set_input_tensorinfo(uint32_t index, const nnfw_tensorinfo *ti)
-{
-  nnfw_tensorinfo ti_copy = *ti;
-  return apply_tensorinfo(index, ti_copy);
 }
 
 NNFW_STATUS nnfw_session::input_tensorinfo(uint32_t index, nnfw_tensorinfo *ti)
@@ -1764,6 +1765,7 @@ bool nnfw_session::isStatePreparedOrFinishedTraining()
 
 NNFW_STATUS nnfw_session::set_quantization_type(NNFW_QUANTIZE_TYPE qtype)
 {
+  using onert::odc::QuantizeType;
   try
   {
     if (!isStateModelLoaded())
@@ -1772,18 +1774,25 @@ NNFW_STATUS nnfw_session::set_quantization_type(NNFW_QUANTIZE_TYPE qtype)
       return NNFW_STATUS_INVALID_STATE;
     }
 
-    bool is_q16 = false;
+    QuantizeType odc_qtype = onert::odc::ODC_QTYPE_NOT_SET;
     switch (qtype)
     {
       case NNFW_QUANTIZE_TYPE_U8_ASYM:
+        odc_qtype = onert::odc::ODC_QTYPE_WO_I8_SYM;
         break;
       case NNFW_QUANTIZE_TYPE_I16_SYM:
-        is_q16 = true;
+        odc_qtype = onert::odc::ODC_QTYPE_I16_SYM;
+        break;
+      case NNFW_QUANTIZE_TYPE_WO_I8_SYM:
+        odc_qtype = onert::odc::ODC_QTYPE_WO_I8_SYM;
+        break;
+      case NNFW_QUANTIZE_TYPE_WO_I16_SYM:
+        odc_qtype = onert::odc::ODC_QTYPE_WO_I16_SYM;
         break;
       default:
         return NNFW_STATUS_INVALID_STATE;
     }
-    _quant_manager->quantizeType(is_q16);
+    _quant_manager->quantizeType(odc_qtype);
   }
   catch (const std::exception &e)
   {
