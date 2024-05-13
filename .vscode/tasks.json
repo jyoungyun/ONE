@@ -54,9 +54,9 @@
       "command": "ROOTFS_DIR=$(pwd)/tools/cross/rootfs/aarch64/ CROSS_BUILD=1 TARGET_ARCH=aarch64 make -f Makefile.template BUILD_TYPE=release"
     },
     {
-      "label": "ONE-Runtime: Tizen Docker Build (Debug)",
+      "label": "ONE-Runtime: Tizen(tizen_8) Docker Build",
       "type": "shell",
-      "command": "docker run -it --rm -v ${PWD}:/opt/test -w /opt/test --privileged nnfw/one-devtools:focal gbs -c /opt/test/infra/nnfw/config/gbs.conf build -A armv7l --profile=profile.tizen_8 --define 'test_build 1' --define 'nproc 4'"
+      "command": "mkdir -p Product/GBS-ROOT/ && docker run -it --rm -v ${PWD}:/opt/test -w /opt/test --privileged nnfw/one-devtools:focal /bin/bash -c \"gbs -c /opt/test/infra/nnfw/config/gbs.conf build -A armv7l --profile=profile.tizen_8 --define 'test_build 1' --define 'nproc 4' ; echo $? ; cp -rf /home/ubuntu/GBS-ROOT/local/repos/ /opt/test/Product/GBS-ROOT/\""
     }
   ]
 }
