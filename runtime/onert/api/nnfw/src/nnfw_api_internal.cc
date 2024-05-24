@@ -1674,6 +1674,10 @@ NNFW_STATUS nnfw_session::train_export_circle(const char *path)
     size_t _buf_sz = 0;
   };
 
+  std::ifstream src(_model_path, std::ios::binary);
+  std::ofstream dst(path, std::ios::binary);
+  dst << src.rdbuf();
+
   MMappedFile mmapfile(path);
   if (!mmapfile.ensure_mmap())
     return NNFW_STATUS_ERROR;
@@ -1778,7 +1782,7 @@ NNFW_STATUS nnfw_session::set_quantization_type(NNFW_QUANTIZE_TYPE qtype)
     switch (qtype)
     {
       case NNFW_QUANTIZE_TYPE_U8_ASYM:
-        odc_qtype = onert::odc::ODC_QTYPE_WO_I8_SYM;
+        odc_qtype = onert::odc::ODC_QTYPE_U8_ASYM;
         break;
       case NNFW_QUANTIZE_TYPE_I16_SYM:
         odc_qtype = onert::odc::ODC_QTYPE_I16_SYM;

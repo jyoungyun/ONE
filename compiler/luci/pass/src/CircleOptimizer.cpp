@@ -26,6 +26,7 @@
 #include "luci/Pass/FoldDequantizePass.h"
 #include "luci/Pass/FoldFullyConnectedPass.h"
 #include "luci/Pass/FoldGatherPass.h"
+#include "luci/Pass/FoldReshapePass.h"
 #include "luci/Pass/FoldShapePass.h"
 #include "luci/Pass/FoldSparseToDensePass.h"
 #include "luci/Pass/FoldSqueezePass.h"
@@ -46,6 +47,7 @@
 #include "luci/Pass/FusePreActivationBatchNormPass.h"
 #include "luci/Pass/FusePReluPass.h"
 #include "luci/Pass/FuseGeluPass.h"
+#include "luci/Pass/FuseRsqrtPass.h"
 #include "luci/Pass/FuseSliceWithTConvPass.h"
 #include "luci/Pass/FuseHorizontalFullyConnectedPass.h"
 #include "luci/Pass/FuseTransposeWithMeanPass.h"
@@ -338,6 +340,10 @@ void CircleOptimizer::optimize(loco::Graph *g) const
   {
     phase.emplace_back(std::make_unique<FuseGeluPass>());
   }
+  if (_options->query(Options::Algorithm::FuseRsqrt))
+  {
+    phase.emplace_back(std::make_unique<FuseRsqrtPass>());
+  }
   if (_options->query(Options::Algorithm::FuseHorizontalFullyConnected))
   {
     phase.emplace_back(std::make_unique<FuseHorizontalFullyConnectedPass>());
@@ -373,6 +379,10 @@ void CircleOptimizer::optimize(loco::Graph *g) const
   if (_options->query(Options::Algorithm::FoldGather))
   {
     phase.emplace_back(std::make_unique<luci::FoldGatherPass>());
+  }
+  if (_options->query(Options::Algorithm::FoldReshape))
+  {
+    phase.emplace_back(std::make_unique<luci::FoldReshapePass>());
   }
   if (_options->query(Options::Algorithm::FoldShape))
   {

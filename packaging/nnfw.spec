@@ -12,25 +12,20 @@ Source2001: nnfw.pc.in
 Source2002: nnfw-plugin.pc.in
 Source3001: ABSEIL.tar.gz
 Source3002: CPUINFO.tar.gz
-Source3003: EGL_HEADERS.tar.gz
-Source3004: FARMHASH.tar.gz
-Source3005: FP16.tar.gz
-Source3006: FXDIV.tar.gz
-Source3007: GEMMLOWP.tar.gz
-Source3008: OOURAFFT.tar.gz
-Source3009: OPENCL_HEADERS.tar.gz
-Source3010: OPENGL_HEADERS.tar.gz
-Source3011: PSIMD.tar.gz
-Source3012: PTHREADPOOL.tar.gz
-Source3013: TENSORFLOW-2.8.0-EIGEN.tar.gz
-Source3014: TENSORFLOW-2.8.0-GEMMLOWP.tar.gz
-Source3015: TENSORFLOW-2.8.0-RUY.tar.gz
-Source3016: TENSORFLOW-2.8.0.tar.gz
-Source3017: VULKAN.tar.gz
-Source3018: XNNPACK.tar.gz
-Source3019: FLATBUFFERS-23.5.26.tar.gz
-Source3020: NEON2SSE.tar.gz
-Source3021: FLATBUFFERS-2.0.tar.gz
+Source3003: FARMHASH.tar.gz
+Source3004: FP16.tar.gz
+Source3005: FXDIV.tar.gz
+Source3006: GEMMLOWP.tar.gz
+Source3007: OOURAFFT.tar.gz
+Source3008: PSIMD.tar.gz
+Source3009: PTHREADPOOL.tar.gz
+Source3010: TENSORFLOW-2.8.0-EIGEN.tar.gz
+Source3011: TENSORFLOW-2.8.0-GEMMLOWP.tar.gz
+Source3012: TENSORFLOW-2.8.0-RUY.tar.gz
+Source3013: TENSORFLOW-2.8.0.tar.gz
+Source3014: XNNPACK.tar.gz
+Source3015: FLATBUFFERS-23.5.26.tar.gz
+Source3016: NEON2SSE.tar.gz
 
 %{!?build_type:     %define build_type      Release}
 %{!?npud_build:     %define npud_build      0}
@@ -189,6 +184,11 @@ NPU daemon for optimal management of NPU hardware
         -DEXTERNALS_BUILD_THREAD=%{nproc} -DBUILD_MINIMAL_SAMPLE=ON -DNNFW_OVERLAY_DIR=$(pwd)/%{overlay_path} \\\
         %{option_test} %{option_coverage} %{option_config} %{extra_option}
 
+%define strip_options %{nil}
+%if %{build_type} == "Release"
+%define strip_options --strip
+%endif
+
 %prep
 %setup -q
 cp %{SOURCE1} .
@@ -210,11 +210,6 @@ tar -xf %{SOURCE3013} -C ./externals
 tar -xf %{SOURCE3014} -C ./externals
 tar -xf %{SOURCE3015} -C ./externals
 tar -xf %{SOURCE3016} -C ./externals
-tar -xf %{SOURCE3017} -C ./externals
-tar -xf %{SOURCE3018} -C ./externals
-tar -xf %{SOURCE3019} -C ./externals
-tar -xf %{SOURCE3020} -C ./externals
-tar -xf %{SOURCE3021} -C ./externals
 
 %build
 %ifarch arm armv7l armv7hl aarch64 x86_64 %ix86 riscv64
@@ -224,7 +219,7 @@ tar -xf %{SOURCE3021} -C ./externals
         -DCMAKE_INSTALL_PREFIX=$(pwd)/%{overlay_path} \
 	-DBUILD_WHITELIST="luci;foder;pepper-csv2vec;loco;locop;logo;logo-core;mio-circle08;luci-compute;oops;hermes;hermes-std;angkor;pp;pepper-strcast;pepper-str"
 %{nncc_env} ./nncc build %{build_jobs}
-cmake --install %{nncc_workspace}
+cmake --install %{nncc_workspace} %{strip_options}
 %endif # odc_build
 
 # install angkor TensorIndex and oops InternalExn header (TODO: Remove this)
@@ -238,7 +233,7 @@ cp compiler/oops/include/oops/InternalExn.h %{overlay_path}/include/oops
 %{build_env} ./nnfw build %{build_jobs}
 # install in workspace
 # TODO Set install path
-%{build_env} ./nnfw install --prefix %{nnfw_workspace}/out
+%{build_env} ./nnfw install --prefix %{nnfw_workspace}/out %{strip_options}
 
 %if %{test_build} == 1
 %if %{coverage_build} == 1
